@@ -1,7 +1,7 @@
 
     [x] p         command
     [x] makewords command
-    [ ] lowercase command
+    [x] lowercase command
     [ ] sort      command
     [ ] unique    command
     [ ] mismatch  command
