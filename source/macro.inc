@@ -2,15 +2,15 @@
 # 30 Jun 2025
 # Useful macros
 
-.macro RDFILE filename, unable_lb, buffer
+.macro RDFILE buffer
         # opens the file for reading only
-	movq	$2, %rax
-        movq    \filename, %rdi
+        xorq    %rax, %rax
+	movl	$2, %eax
 	xorq	%rsi, %rsi
 	xorq	%rdx, %rdx
 	syscall
-        cmpq    $-1, %rax
-        je      \unable_lb
+        cmpl    $0, %eax
+        jl      .unable
         # getting file size in bytes
 	movl	%eax, -4(%rbp)
 	movq	$8, %rax

@@ -7,7 +7,7 @@
 	.usage_len: .quad   24
 
 	.unable_msg: .string "p-command: unable to open/read file\n"
-	.unable_len: .quad   31
+	.unable_len: .quad   36
 
 .section .bss
 	.buffer: .zero 8
@@ -27,7 +27,7 @@ _start:
 	pushq	%rbp
 	movq	%rsp, %rbp
 	subq	$12, %rsp
-	RDFILE	%rdi, .unable, .buffer(%rip)	
+	RDFILE	.buffer(%rip)	
 	movq	$1, %rax
 	movq	$1, %rdi
 	movq	.buffer(%rip), %rsi
