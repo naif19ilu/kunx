@@ -35,6 +35,15 @@
 
 .section .text
 
+.macro GETWRD i, store
+	movq	\i, %rax
+	movq	(.longswp1), %rbx
+	mulq	%rbx
+	movq	(.heapsc), %r15
+	movq	%r15, \store
+	addq	%rax, \store
+.endm
+
 .include "macro.inc"
 
 .globl _start
@@ -139,10 +148,27 @@ _start:
 .stage_3:
 	# At this point .heapsc has a word each
 	# .longestw bytes, it's time to sort them
+
+	movq	$1, %rax
+	movq	$1, %rdi
+	movq	(.heapsc), %rsi
+	movq	-20(%rbp), %rdx
+	syscall
+
+
 	movq	$0, %rdi
 	movq	(.nolines), %rsi
 	decq	%rsi
+
+
+
 	call	.Quick
+
+	movq	$1, %rax
+	movq	$1, %rdi
+	movq	(.heapsc), %rsi
+	movq	-20(%rbp), %rdx
+	syscall
 
 .leave:
 	UNMAP	.heapsc(%rip), -20(%rbp)
@@ -183,13 +209,24 @@ _start:
 .Quick:
 	pushq	%rbp
 	movq	%rsp, %rbp
+	# -8: low
+	# -16: high
+	# -24: parition value
+	subq	$24, %rsp
+	movq	%rdi, -8(%rbp)
+	movq	%rsi, -16(%rbp)
 	cmpq	%rsi, %rdi		# rdi < rsi
 	jg	.qk_return
-
 	call	.Partition
-
-	call	.Partition
-
+	movq	%rax, -24(%rbp)
+	movq	-8(%rbp), %rdi
+	movq	-24(%rbp), %rsi
+	decq	%rsi
+	call	.Quick
+	movq	-24(%rbp), %rdi
+	incq	%rdi
+	movq	-16(%rbp), %rsi
+	call	.Quick
 .qk_return:
 	leave
 	ret
@@ -208,12 +245,7 @@ _start:
 	movq	%rsi, -16(%rbp)
 	# Getting high offset within heapsc
 	# (longestw + 1) * high
-	movq	(.longswp1), %rbx
-	movq	%rsi, %rax
-	mulq	%rbx
-	movq	(.heapsc), %rbx
-	addq	%rax, %rbx
-	movq	%rbx, -24(%rbp)
+	GETWRD	%rsi, -24(%rbp)
 	# pointer is low - 1
 	decq	%rdi
 	movq	%rdi, -32(%rbp)
@@ -223,21 +255,28 @@ _start:
 .pt_loop:
 	movq	-40(%rbp), %rax
 	cmpq	-16(%rbp), %rax
-	je	.pt_continue
-	# words[j]
-	movq	(.longswp1), %rbx
-	mulq	%rbx
-	movq	(.heapsc), %rdi
-	addq	%rax, %rdi
+	je	.pt_return
+	# cmp(words[j], pivot)
+	GETWRD	-40(%rbp), %rdi
 	movq	-24(%rbp), %rsi
 	call	.Cmp
-
+	cmpq	$2, %rax
+	je	.pt_resume
+	incq	-32(%rbp)
+	movq	-32(%rbp), %rdi
+	movq	-40(%rbp), %rsi
+	call	.Swap
 .pt_resume:
 	incq	-40(%rbp)
 	jmp	.pt_loop
-
-.pt_continue:
-
+.pt_return:
+	incq	-32(%rbp)
+	movq	-32(%rbp), %rdi
+	movq	-16(%rbp), %rsi
+	call	.Swap
+	movq	-32(%rbp), %rax
+	leave
+	ret
 
 # rdi: string 1
 # rsi: string 2
@@ -276,3 +315,27 @@ _start:
 	leave
 	ret
 
+# arguments: rdi (first pos) rsi (second pos)
+.Swap:
+	pushq	%rbp
+	movq	%rsp, %rbp
+	subq	$16, %rsp
+	GETWRD	%rdi, -8(%rbp)
+	GETWRD	%rsi, -16(%rbp)
+	xorq	%rcx, %rcx
+.sw_loop:
+	cmpq	(.longestw), %rcx
+	je	.sw_return
+	movq	-8(%rbp), %rax
+	movq	-16(%rbp), %rbx
+	movzbl	(%rax), %edi
+	movzbl	(%rbx), %esi
+	movb	%dil, (%rbx)
+	movb	%sil, (%rax)
+	incq	%rcx
+	incq	-8(%rbp)
+	incq	-16(%rbp)
+	jmp	.sw_loop
+.sw_return:
+	leave
+	ret
