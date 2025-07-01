@@ -14,11 +14,23 @@
 	.badheap_len: .quad 39
 
 .section .data
+	# Number of lines the raw file has
 	.nolines: .quad 0
-	.lgtwrd:  .quad 0
+	# Longest word within the file (do not include newline byte)
+	.longestw: .quad 0
+	# Longest word within the file (does include newline byte)
+	.longswp1: .quad 0
 
 .section .bss
+	# The raw file, for example
+	# abc
+	# drjfgh
+	# something
         .buffer: .zero 8
+	# The file content but all lines share wdith
+	# abc      .
+	# drjfgh   .
+	# something.
 	.heapsc: .zero 8
 
 .section .text
@@ -54,9 +66,9 @@ _start:
 	incq	%r9
 	jmp	.loop_1
 .neword:
-	cmpq	.lgtwrd(%rip), %r9
+	cmpq	.longestw(%rip), %r9
 	jle	.resume_1
-	movq	%r9, (.lgtwrd)
+	movq	%r9, (.longestw)
 .resume_1:
 	incq	(.nolines)
 	incq	%r8
@@ -71,15 +83,16 @@ _start:
 	cmpb	$'\n', %dil
 	je	.stage_2
 	incq	(.nolines)
-	cmpq	.lgtwrd(%rip), %r9
+	cmpq	.longestw(%rip), %r9
 	jle	.stage_2
-	movq	%r9, (.lgtwrd)
+	movq	%r9, (.longestw)
 .stage_2:
 	# Now we need to make room for the array
-	# of strings which is going to be (lgtwrd + 1) * nolines
+	# of strings which is going to be (longestw + 1) * nolines
 	# (The +1 is due to null-terminator byte)
-	movq	(.lgtwrd), %rbx
+	movq	(.longestw), %rbx
 	incq	%rbx
+	movq	%rbx, (.longswp1)
 	movq	(.nolines), %rax
 	mulq	%rbx
 	movq	%rax, -20(%rbp)
@@ -114,7 +127,7 @@ _start:
 	jmp	.resume_2
 .newline:
 	movb	$'\n', (%r9)
-	movq	(.lgtwrd), %rax
+	movq	(.longestw), %rax
 	subq	%r10, %rax
 	# Add the missing bytes
 	addq	%rax, %r9
@@ -125,20 +138,11 @@ _start:
 	jmp	.loop_2
 .stage_3:
 	# At this point .heapsc has a word each
-	# .lgtwrd bytes, it's time to sort them
-	# r8: source (copy)
-	# r9: number of strings compared (aka i)
-	movq	(.heapsc), %r8
-
-	movq	%r8, %rdi
-	movq	%r8, %rsi
-	addq	$13, %rsi
-	call	.Cmp
-
-	movq	%rax, %rdi
-	movq	$60, %rax
-	syscall
-
+	# .longestw bytes, it's time to sort them
+	movq	$0, %rdi
+	movq	(.nolines), %rsi
+	decq	%rsi
+	call	.Quick
 
 .leave:
 	UNMAP	.heapsc(%rip), -20(%rbp)
@@ -175,6 +179,69 @@ _start:
 	movq	$1, %rdi
 	syscall
 
+# arguments: rdi (low), rsi (high)
+.Quick:
+	pushq	%rbp
+	movq	%rsp, %rbp
+	cmpq	%rsi, %rdi		# rdi < rsi
+	jg	.qk_return
+
+	call	.Partition
+
+	call	.Partition
+
+.qk_return:
+	leave
+	ret
+
+# arguments: rdi (low), rsi (high)
+.Partition:
+	pushq	%rbp
+	movq	%rsp, %rbp
+	# -8 : low
+	# -16: high
+	# -24: pivot
+	# -32: pointer
+	# -40: loop iter
+	subq	$40, %rsp
+	movq	%rdi, -8(%rbp)
+	movq	%rsi, -16(%rbp)
+	# Getting high offset within heapsc
+	# (longestw + 1) * high
+	movq	(.longswp1), %rbx
+	movq	%rsi, %rax
+	mulq	%rbx
+	movq	(.heapsc), %rbx
+	addq	%rax, %rbx
+	movq	%rbx, -24(%rbp)
+	# pointer is low - 1
+	decq	%rdi
+	movq	%rdi, -32(%rbp)
+	# j = low; j < high; j++ type shit
+	movq	-8(%rbp), %rax
+	movq	%rax, -40(%rbp)
+.pt_loop:
+	movq	-40(%rbp), %rax
+	cmpq	-16(%rbp), %rax
+	je	.pt_continue
+	# words[j]
+	movq	(.longswp1), %rbx
+	mulq	%rbx
+	movq	(.heapsc), %rdi
+	addq	%rax, %rdi
+	movq	-24(%rbp), %rsi
+	call	.Cmp
+
+.pt_resume:
+	incq	-40(%rbp)
+	jmp	.pt_loop
+
+.pt_continue:
+
+
+# rdi: string 1
+# rsi: string 2
+# ret: { 0:rdi < rsi, 1:rdi = rsi, 2:rdi > rsi }
 .Cmp:
 	pushq	%rbp
 	movq	%rsp, %rbp
@@ -208,3 +275,4 @@ _start:
 	movq	$0, %rax
 	leave
 	ret
+
