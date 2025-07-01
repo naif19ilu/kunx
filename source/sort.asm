@@ -113,6 +113,7 @@ _start:
 	incq	%r10
 	jmp	.resume_2
 .newline:
+	movb	$'\n', (%r9)
 	movq	(.lgtwrd), %rax
 	subq	%r10, %rax
 	# Add the missing bytes
@@ -123,6 +124,15 @@ _start:
 	incq	%r9
 	jmp	.loop_2
 .stage_3:
+	# At this point .heapsc has a word each
+	# .lgtwrd bytes, it's time to sort them
+	
+
+	movq	$1, %rax
+	movq	$1, %rdi
+	movq	(.heapsc), %rsi
+	movq	-20(%rbp), %rdx
+	syscall
 
 .leave:
 	UNMAP	.heapsc(%rip), -20(%rbp)
@@ -158,3 +168,37 @@ _start:
 	movq	$60, %rax
 	movq	$1, %rdi
 	syscall
+
+.Cmp:
+	pushq	%rbp
+	movq	%rsp, %rbp
+.cmp_loop:
+	movzbl	(%rdi), %eax
+	cmpb	(%rsi), %al
+	je	.cmp_eqch
+	cmpb	$'\n', %al
+	je	.cmp_ret0
+	movzbl	(%rsi), %ebx
+	cmpb	$'\n', %bl
+	je	.cmp_ret2
+	subb	%bl, %al
+	js	.cmp_ret0
+	jmp	.cmp_ret2
+.cmp_eqch:
+	cmpb	$'\n', %al
+	je	.cmp_ret1
+	incq	%rdi
+	incq	%rsi
+	jmp	.cmp_loop
+.cmp_ret2:
+	movq	$2, %rax
+	leave
+	ret
+.cmp_ret1:
+	movq	$1, %rax
+	leave
+	ret
+.cmp_ret0:
+	movq	$0, %rax
+	leave
+	ret
