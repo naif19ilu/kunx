@@ -13,6 +13,8 @@
 	.badheap_msg: .string "sort-command: unable to allocate space\n"
 	.badheap_len: .quad 39
 
+	.n: .string "\n"
+
 .section .data
 	# Number of lines the raw file has
 	.nolines: .quad 0
@@ -135,11 +137,19 @@ _start:
 	incq	%r10
 	jmp	.resume_2
 .newline:
-	movb	$'\n', (%r9)
 	movq	(.longestw), %rax
 	subq	%r10, %rax
-	# Add the missing bytes
-	addq	%rax, %r9
+	movq	%rax, %r15
+	xorq	%rcx, %rcx
+.newline_loop:
+	cmpq	%rcx, %r15
+	je	.newline_ok
+	movb	$0, (%r9)
+	incq	%r9
+	incq	%rcx
+	jmp	.newline_loop
+.newline_ok:
+	movb	$'\n', (%r9)
 	xorq	%r10, %r10
 .resume_2:
 	incq	%r8
@@ -148,28 +158,15 @@ _start:
 .stage_3:
 	# At this point .heapsc has a word each
 	# .longestw bytes, it's time to sort them
-
-	movq	$1, %rax
-	movq	$1, %rdi
-	movq	(.heapsc), %rsi
-	movq	-20(%rbp), %rdx
-	syscall
-
-
 	movq	$0, %rdi
 	movq	(.nolines), %rsi
 	decq	%rsi
-
-
-
 	call	.Quick
-
 	movq	$1, %rax
 	movq	$1, %rdi
 	movq	(.heapsc), %rsi
 	movq	-20(%rbp), %rdx
 	syscall
-
 .leave:
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
@@ -319,19 +316,23 @@ _start:
 .Swap:
 	pushq	%rbp
 	movq	%rsp, %rbp
-	subq	$16, %rsp
+	subq	$24, %rsp
 	GETWRD	%rdi, -8(%rbp)
 	GETWRD	%rsi, -16(%rbp)
 	xorq	%rcx, %rcx
 .sw_loop:
-	cmpq	(.longestw), %rcx
+	cmpq	.longestw(%rip), %rcx
 	je	.sw_return
+
 	movq	-8(%rbp), %rax
 	movq	-16(%rbp), %rbx
+
 	movzbl	(%rax), %edi
 	movzbl	(%rbx), %esi
-	movb	%dil, (%rbx)
+
 	movb	%sil, (%rax)
+	movb	%dil, (%rbx)
+
 	incq	%rcx
 	incq	-8(%rbp)
 	incq	-16(%rbp)
@@ -339,3 +340,5 @@ _start:
 .sw_return:
 	leave
 	ret
+
+
