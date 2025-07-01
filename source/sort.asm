@@ -126,13 +126,19 @@ _start:
 .stage_3:
 	# At this point .heapsc has a word each
 	# .lgtwrd bytes, it's time to sort them
-	
+	# r8: source (copy)
+	# r9: number of strings compared (aka i)
+	movq	(.heapsc), %r8
 
-	movq	$1, %rax
-	movq	$1, %rdi
-	movq	(.heapsc), %rsi
-	movq	-20(%rbp), %rdx
+	movq	%r8, %rdi
+	movq	%r8, %rsi
+	addq	$13, %rsi
+	call	.Cmp
+
+	movq	%rax, %rdi
+	movq	$60, %rax
 	syscall
+
 
 .leave:
 	UNMAP	.heapsc(%rip), -20(%rbp)
