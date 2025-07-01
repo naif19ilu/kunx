@@ -46,10 +46,10 @@
         syscall
 .endm
 
-.macro UNMAP buffer
+.macro UNMAP buffer, len
         movq    $11, %rax
         movq    \buffer, %rdi
-        movq    -12(%rbp), %rdx
+        movq    \len, %rdx
         syscall
 .endm
 

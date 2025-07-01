@@ -35,7 +35,7 @@ _start:
 	syscall
 	jmp	.leave	
 .leave:
-	UNMAP	.buffer(%rip)
+	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
 	movq	$60, %rax
 	movq	$0, %rdi

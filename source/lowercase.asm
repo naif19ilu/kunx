@@ -75,7 +75,7 @@ _start:
 	leaq	.lower(%rip), %rsi
 	movq	%r10, %rdx
 	syscall
-	UNMAP	.buffer(%rip)
+	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
 	movq	$60, %rax
 	movq	$0, %rdi

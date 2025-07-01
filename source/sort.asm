@@ -10,12 +10,16 @@
 	.unable_msg: .string "sort-command: unable to open/read file\n"
 	.unable_len: .quad   39
 
+	.badheap_msg: .string "sort-command: unable to allocate space\n"
+	.badheap_len: .quad 39
+
 .section .data
-	.lines:  .quad 0
-	.lgtwrd: .quad 0
+	.nolines: .quad 0
+	.lgtwrd:  .quad 0
 
 .section .bss
         .buffer: .zero 8
+	.heapsc: .zero 8
 
 .section .text
 
@@ -31,7 +35,8 @@ _start:
 	popq	%rdi
 	pushq	%rbp
 	movq	%rsp, %rbp
-	subq	$12, %rsp
+	# -20: number of bytes used in 'heapsc'
+	subq	$20, %rsp
 	RDFILE	.buffer(%rip)
 	# first thing we want to do is to know
 	# how many words there are
@@ -42,7 +47,7 @@ _start:
 .loop_1:
 	movzbl	(%r8), %edi
 	cmpb	$0, %dil
-	je	.stage_2
+	je	.check_final
 	cmpb	$'\n', %dil
 	je	.neword
 	incq	%r8
@@ -53,14 +58,46 @@ _start:
 	jle	.resume_1
 	movq	%r9, (.lgtwrd)
 .resume_1:
+	incq	(.nolines)
 	incq	%r8
 	xorq	%r9, %r9
 	jmp	.loop_1
+.check_final:
+	# since some editors do not add a newline at the end
+	# of the file we need to make sure the last line was
+	# counted
+	decq	%r8
+	movzbl	(%r8), %edi
+	cmpb	$'\n', %dil
+	je	.stage_2
+	incq	(.nolines)
+	cmpq	.lgtwrd(%rip), %r9
+	jle	.stage_2
+	movq	%r9, (.lgtwrd)
 .stage_2:
-
-
+	# Now we need to make room for the array
+	# of strings which is going to be (lgtwrd + 1) * nolines
+	# (The +1 is due to null-terminator byte)
+	movq	(.lgtwrd), %rbx
+	incq	%rbx
+	movq	(.nolines), %rax
+	mulq	%rbx
+	movq	%rax, -20(%rbp)
+	# allocating memory
+        xorq    %rdi, %rdi
+        movq    %rax, %rsi
+        movq    $3, %rdx		# READ | WRITE
+        movq    $34, %r10		# MAP_PRIVATE | MAP_ANONYMOUS
+	movq	$-1, %r8
+        xorq    %r9, %r9
+        movq    $9, %rax
+        syscall
+	cmpq	$-1, %rax
+	je	.badheap
+	movq	%rax, (.heapsc)
 .leave:
-	UNMAP	.buffer(%rip)
+	UNMAP	.heapsc(%rip), -20(%rbp)
+	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
 	movq	$60, %rax
 	movq	$0, %rdi
@@ -79,6 +116,15 @@ _start:
 	movq	$1, %rdi
 	leaq	.unable_msg(%rip), %rsi
 	movq	.unable_len(%rip), %rdx
+	syscall
+	movq	$60, %rax
+	movq	$1, %rdi
+	syscall
+.badheap:
+	movq	$1, %rax
+	movq	$1, %rdi
+	leaq	.badheap_msg(%rip), %rsi
+	movq	.badheap_len(%rip), %rdx
 	syscall
 	movq	$60, %rax
 	movq	$1, %rdi
