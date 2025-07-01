@@ -95,6 +95,35 @@ _start:
 	cmpq	$-1, %rax
 	je	.badheap
 	movq	%rax, (.heapsc)
+	# Now we need to fill the second buffer as it was
+	# the first one but now all words have a same length
+	# r8 : original buffer
+	# r9 : second buffer
+	# r10: current word's length
+	movq	(.buffer), %r8
+	movq	(.heapsc), %r9
+	xorq	%r10, %r10
+.loop_2:
+	movzbl	(%r8), %edi
+	cmpb	$0, %dil
+	je	.stage_3
+	cmpb	$'\n', %dil
+	je	.newline
+	movb	%dil, (%r9)
+	incq	%r10
+	jmp	.resume_2
+.newline:
+	movq	(.lgtwrd), %rax
+	subq	%r10, %rax
+	# Add the missing bytes
+	addq	%rax, %r9
+	xorq	%r10, %r10
+.resume_2:
+	incq	%r8
+	incq	%r9
+	jmp	.loop_2
+.stage_3:
+
 .leave:
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
