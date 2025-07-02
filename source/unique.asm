@@ -160,24 +160,24 @@ _start:
 	movq	$1, %r8
 .loop_3:
 	cmpq	.nolines(%rip), %r8
-	jge	.leave
+	je	.leave
 	movq	%r8, %r9
 	decq	%r9
 	GETWRD	%r9, %r14
 	GETWRD	%r8, %r15
 	xorq	%rcx, %rcx
 .loop_3_1:
-	cmpq	.longestw(%rip), %rcx
+	cmpq	.longswp1(%rip), %rcx
 	je	.meme
 	movzbl	(%r15), %edi
 	movzbl	(%r14), %esi
 	cmpb	%dil, %sil
-	jne	.resume_2
+	jne	.resume_3
 	incq	%rcx
 	incq	%r14
 	incq	%r15
 	jmp	.loop_3_1
-.meme:	
+.meme:
 	GETWRD	%r9, %r14
 	xorq	%rcx, %rcx
 .meme_loop:
@@ -196,12 +196,14 @@ _start:
 	movq	.heapsc(%rip), %rsi
 	movq	-20(%rbp), %rdx
 	syscall
+
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
 	movq	$60, %rax
 	movq	$0, %rdi
 	syscall
+
 .usage:
 	movq	$1, %rax
 	movq	$1, %rdi
