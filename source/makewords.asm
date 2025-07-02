@@ -30,7 +30,7 @@ _start:
 	pushq	%rbp
 	movq	%rsp, %rbp
 	subq	$12, %rsp
-	RDFILE	.buffer(%rip)	
+	RDFILE	.buffer(%rip), -4(%rbp), -12(%rbp)
 	# r8 : file content
 	# r9 : 'words' buffer
 	# r10: number of bytes written in 'words' buffer

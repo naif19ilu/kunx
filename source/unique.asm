@@ -57,7 +57,7 @@ _start:
 	movq	%rsp, %rbp
 	# -20: number of bytes allocated for 'heapsc'
 	subq	$20, %rsp
-	RDFILE	.buffer(%rip)
+	RDFILE	.buffer(%rip), -4(%rbp), -12(%rbp)
 	# first thing we want to do is to know
 	# how many words there are
 	# r8: source

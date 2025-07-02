@@ -27,7 +27,7 @@ _start:
 	pushq	%rbp
 	movq	%rsp, %rbp
 	subq	$12, %rsp
-	RDFILE	.buffer(%rip)	
+	RDFILE	.buffer(%rip), -4(%rbp), -12(%rbp)
 	movq	$1, %rax
 	movq	$1, %rdi
 	movq	.buffer(%rip), %rsi
