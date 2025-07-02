@@ -2,34 +2,6 @@
 # 2 Jul 2025
 # 'unique' command - only list words once
 
-#.section .bss
-#        .buffer: .zero 8
-#
-#.section .text
-#
-#.include "macro.inc"
-#
-#.globl _start
-#
-#_start:
-#	popq	%rax
-#	cmpq	$2, %rax
-#	jne	.usage
-#	popq	%rax
-#	popq	%rdi
-#	pushq	%rbp
-#	movq	%rsp, %rbp
-#	subq	$12, %rsp
-#	RDFILE	.buffer(%rip)
-#
-#
-#
-
-
-
-
-
-
 .section .rodata
 	.usage_msg: .string "unique-command: unique <filename>\n"
 	.usage_len: .quad   35
@@ -54,7 +26,7 @@
 	# drjfgh
 	# something
         .buffer: .zero 8
-	# The file content but all lines share wdith
+	# The file content but all lines share width
 	# abc      .
 	# drjfgh   .
 	# something.
@@ -83,7 +55,7 @@ _start:
 	popq	%rdi
 	pushq	%rbp
 	movq	%rsp, %rbp
-	# -20: number of bytes used in 'heapsc'
+	# -20: number of bytes allocated for 'heapsc'
 	subq	$20, %rsp
 	RDFILE	.buffer(%rip)
 	# first thing we want to do is to know
@@ -181,14 +153,55 @@ _start:
 	incq	%r9
 	jmp	.loop_2
 .stage_3:
+	# r8 : nth string
+	# r9 : r8 - 1: gets previous line
+	# r14: previous line
+	# r15: current line
+	movq	$1, %r8
+.loop_3:
+	cmpq	.nolines(%rip), %r8
+	jge	.leave
+	movq	%r8, %r9
+	decq	%r9
+	GETWRD	%r9, %r14
+	GETWRD	%r8, %r15
+	xorq	%rcx, %rcx
+.loop_3_1:
+	cmpq	.longestw(%rip), %rcx
+	je	.meme
+	movzbl	(%r15), %edi
+	movzbl	(%r14), %esi
+	cmpb	%dil, %sil
+	jne	.resume_2
+	incq	%rcx
+	incq	%r14
+	incq	%r15
+	jmp	.loop_3_1
+.meme:	
+	GETWRD	%r9, %r14
+	xorq	%rcx, %rcx
+.meme_loop:
+	cmpq	.longswp1(%rip), %rcx
+	je	.resume_3
+	movb	$127, (%r14)	
+	incq	%rcx
+	incq	%r14
+	jmp	.meme_loop
+.resume_3:
+	incq	%r8
+	jmp	.loop_3
 .leave:
+	movq	$1, %rax
+	movq	$1, %rdi
+	movq	.heapsc(%rip), %rsi
+	movq	-20(%rbp), %rdx
+	syscall
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
 	movq	$60, %rax
 	movq	$0, %rdi
 	syscall
-
 .usage:
 	movq	$1, %rax
 	movq	$1, %rdi
