@@ -160,7 +160,7 @@ _start:
 	movq	$1, %r8
 .loop_3:
 	cmpq	.nolines(%rip), %r8
-	je	.leave
+	je	.restore
 	movq	%r8, %r9
 	decq	%r9
 	GETWRD	%r9, %r14
@@ -190,12 +190,41 @@ _start:
 .resume_3:
 	incq	%r8
 	jmp	.loop_3
+
+
+
+.restore:
+	leaq	(.buffer), %r8
+	movq	.heapsc(%rip), %r9
+	xorq	%r10, %r10
+	xorq	%r11, %r11
+.restore_loop:
+	cmpq	-20(%rbp), %r11
+	je	.leave
+	movzbl	(%r9), %eax
+	cmpb	$0, %al
+	je	.restore_resume
+	cmpb	$127, %al
+	je	.restore_resume
+	movb	%al, (%r8)
+	incq	%r10
+	incq	%r8
+.restore_resume:
+	incq	%r9
+	incq	%r11
+	jmp	.restore_loop
+
+
+
 .leave:
+
 	movq	$1, %rax
 	movq	$1, %rdi
-	movq	.heapsc(%rip), %rsi
-	movq	-20(%rbp), %rdx
+	leaq	(.buffer), %rsi
+	movq	%r10, %rdx
 	syscall
+
+
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
