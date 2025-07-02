@@ -163,52 +163,28 @@ _start:
 	movq	(.nolines), %rsi
 	decq	%rsi
 	call	.Quick
-
-	#movq	$1, %rax
-	#movq	$1, %rdi
-	#movq	(.heapsc), %rsi
-	#movq	-20(%rbp), %rdx
-	#syscall
-
-.fill:
-	leaq	.spbuf(%rip), %r8
-	movq	(.heapsc), %r9
-	xorq	%rcx, %rcx
-	xorq	%r10, %r10
-.fill_loop:
-	cmpq	-20(%rbp), %rcx
+.restore:
+	leaq	(.buffer), %r8
+	movq	.heapsc(%rip), %r9
+	xorq	%r11, %r11
+.restore_loop:
+	cmpq	-20(%rbp), %r11
 	je	.leave
-	cmpq	.spbufcap(%rip), %r10
-	je	.fill_full
-	movzbl	(%r9), %edi
-	cmpb	$0, %dil
-	je	.fill_resume
-	movb	%dil, (%r8)
+	movzbl	(%r9), %eax
+	cmpb	$0, %al
+	je	.restore_resume
+	movb	%al, (%r8)
 	incq	%r8
-	incq	%r10
-.fill_resume:
+.restore_resume:
 	incq	%r9
-	incq	%rcx
-	jmp	.fill_loop
-.fill_full:
+	incq	%r11
+	jmp	.restore_loop
+.leave:
 	movq	$1, %rax
 	movq	$1, %rdi
-	leaq	.spbuf(%rip), %rsi
-	movq	%r10, %rdx
+	leaq	(.buffer), %rsi
+	movq	-12(%rbp), %rdx
 	syscall
-	leaq	.spbuf(%rip), %r8
-	xorq	%r10, %r10
-	jmp	.fill_resume
-
-
-.leave:
-	#movq	$1, %rax
-	#movq	$1, %rdi
-	#leaq	.spbuf(%rip), %rsi
-	#movq	%r10, %rdx
-	#syscall
-
-
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
