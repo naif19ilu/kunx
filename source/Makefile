@@ -1,5 +1,5 @@
-objs = p.o makewords.o lowercase.o sort.o
-exec = p makewords lowercase sort
+objs = p.o makewords.o lowercase.o sort.o unique.o
+exec = p makewords lowercase sort unique
 
 all: $(exec)
 
@@ -18,6 +18,10 @@ lowercase: lowercase.asm
 sort: sort.asm
 	as	-o sort.o sort.asm
 	ld	-o sort sort.o
+
+unique: unique.asm
+	as	-o unique.o unique.asm
+	ld	-o unique unique.o
 
 clean:
 	rm	-rf $(objs) $(exec)

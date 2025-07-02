@@ -1,17 +1,44 @@
-
 # kunx - Kernighan using unix
-# 1 Jul 2025
-# 'sort' command - sort lines by ascii order
+# 2 Jul 2025
+# 'unique' command - only list words once
+
+#.section .bss
+#        .buffer: .zero 8
+#
+#.section .text
+#
+#.include "macro.inc"
+#
+#.globl _start
+#
+#_start:
+#	popq	%rax
+#	cmpq	$2, %rax
+#	jne	.usage
+#	popq	%rax
+#	popq	%rdi
+#	pushq	%rbp
+#	movq	%rsp, %rbp
+#	subq	$12, %rsp
+#	RDFILE	.buffer(%rip)
+#
+#
+#
+
+
+
+
+
 
 .section .rodata
-	.usage_msg: .string "sort-command: sort <filename>\n"
-	.usage_len: .quad   32
+	.usage_msg: .string "unique-command: unique <filename>\n"
+	.usage_len: .quad   35
 
-	.unable_msg: .string "sort-command: unable to open/read file\n"
-	.unable_len: .quad   39
+	.unable_msg: .string "unique-command: unable to open/read file\n"
+	.unable_len: .quad   41
 
-	.badheap_msg: .string "sort-command: unable to allocate space\n"
-	.badheap_len: .quad 39
+	.badheap_msg: .string "unique-command: unable to allocate space\n"
+	.badheap_len: .quad 41
 
 .section .data
 	# Number of lines the raw file has
@@ -154,17 +181,6 @@ _start:
 	incq	%r9
 	jmp	.loop_2
 .stage_3:
-	# At this point .heapsc has a word each
-	# .longestw bytes, it's time to sort them
-	movq	$0, %rdi
-	movq	(.nolines), %rsi
-	decq	%rsi
-	call	.Quick
-	movq	$1, %rax
-	movq	$1, %rdi
-	movq	(.heapsc), %rsi
-	movq	-20(%rbp), %rdx
-	syscall
 .leave:
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
@@ -172,6 +188,7 @@ _start:
 	movq	$60, %rax
 	movq	$0, %rdi
 	syscall
+
 .usage:
 	movq	$1, %rax
 	movq	$1, %rdi
@@ -199,140 +216,3 @@ _start:
 	movq	$60, %rax
 	movq	$1, %rdi
 	syscall
-
-# arguments: rdi (low), rsi (high)
-.Quick:
-	pushq	%rbp
-	movq	%rsp, %rbp
-	# -8: low
-	# -16: high
-	# -24: parition value
-	subq	$24, %rsp
-	movq	%rdi, -8(%rbp)
-	movq	%rsi, -16(%rbp)
-	cmpq	%rsi, %rdi		# rdi < rsi
-	jg	.qk_return
-	call	.Partition
-	movq	%rax, -24(%rbp)
-	movq	-8(%rbp), %rdi
-	movq	-24(%rbp), %rsi
-	decq	%rsi
-	call	.Quick
-	movq	-24(%rbp), %rdi
-	incq	%rdi
-	movq	-16(%rbp), %rsi
-	call	.Quick
-.qk_return:
-	leave
-	ret
-
-# arguments: rdi (low), rsi (high)
-.Partition:
-	pushq	%rbp
-	movq	%rsp, %rbp
-	# -8 : low
-	# -16: high
-	# -24: pivot
-	# -32: pointer
-	# -40: loop iter
-	subq	$40, %rsp
-	movq	%rdi, -8(%rbp)
-	movq	%rsi, -16(%rbp)
-	# Getting high offset within heapsc
-	# (longestw + 1) * high
-	GETWRD	%rsi, -24(%rbp)
-	# pointer is low - 1
-	decq	%rdi
-	movq	%rdi, -32(%rbp)
-	# j = low; j < high; j++ type shit
-	movq	-8(%rbp), %rax
-	movq	%rax, -40(%rbp)
-.pt_loop:
-	movq	-40(%rbp), %rax
-	cmpq	-16(%rbp), %rax
-	je	.pt_return
-	# cmp(words[j], pivot)
-	GETWRD	-40(%rbp), %rdi
-	movq	-24(%rbp), %rsi
-	call	.Cmp
-	cmpq	$2, %rax
-	je	.pt_resume
-	incq	-32(%rbp)
-	movq	-32(%rbp), %rdi
-	movq	-40(%rbp), %rsi
-	call	.Swap
-.pt_resume:
-	incq	-40(%rbp)
-	jmp	.pt_loop
-.pt_return:
-	incq	-32(%rbp)
-	movq	-32(%rbp), %rdi
-	movq	-16(%rbp), %rsi
-	call	.Swap
-	movq	-32(%rbp), %rax
-	leave
-	ret
-
-# rdi: string 1
-# rsi: string 2
-# ret: { 0:rdi < rsi, 1:rdi = rsi, 2:rdi > rsi }
-.Cmp:
-	pushq	%rbp
-	movq	%rsp, %rbp
-.cmp_loop:
-	movzbl	(%rdi), %eax
-	cmpb	(%rsi), %al
-	je	.cmp_eqch
-	cmpb	$'\n', %al
-	je	.cmp_ret0
-	movzbl	(%rsi), %ebx
-	cmpb	$'\n', %bl
-	je	.cmp_ret2
-	subb	%bl, %al
-	js	.cmp_ret0
-	jmp	.cmp_ret2
-.cmp_eqch:
-	cmpb	$'\n', %al
-	je	.cmp_ret1
-	incq	%rdi
-	incq	%rsi
-	jmp	.cmp_loop
-.cmp_ret2:
-	movq	$2, %rax
-	leave
-	ret
-.cmp_ret1:
-	movq	$1, %rax
-	leave
-	ret
-.cmp_ret0:
-	movq	$0, %rax
-	leave
-	ret
-
-# arguments: rdi (first pos) rsi (second pos)
-.Swap:
-	pushq	%rbp
-	movq	%rsp, %rbp
-	subq	$24, %rsp
-	GETWRD	%rdi, -8(%rbp)
-	GETWRD	%rsi, -16(%rbp)
-	xorq	%rcx, %rcx
-.sw_loop:
-	cmpq	.longestw(%rip), %rcx
-	je	.sw_return
-	movq	-8(%rbp), %rax
-	movq	-16(%rbp), %rbx
-	movzbl	(%rax), %edi
-	movzbl	(%rbx), %esi
-	movb	%sil, (%rax)
-	movb	%dil, (%rbx)
-	incq	%rcx
-	incq	-8(%rbp)
-	incq	-16(%rbp)
-	jmp	.sw_loop
-.sw_return:
-	leave
-	ret
-
-
