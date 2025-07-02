@@ -53,3 +53,5 @@
         syscall
 .endm
 
+.macro SPILT bytes
+.endm

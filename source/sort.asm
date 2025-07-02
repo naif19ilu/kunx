@@ -12,6 +12,8 @@
 	.badheap_msg: .string "sort-command: unable to allocate space\n"
 	.badheap_len: .quad 39
 
+	.spbufcap: .quad 1
+
 .section .data
 	# Number of lines the raw file has
 	.nolines: .quad 0
@@ -31,6 +33,8 @@
 	# drjfgh   .
 	# something.
 	.heapsc: .zero 8
+	# Ultimate buffer (non printiable characters are not included)
+	.spbuf: .zero 2048
 
 .section .text
 
@@ -141,7 +145,7 @@ _start:
 .newline_loop:
 	cmpq	%rcx, %r15
 	je	.newline_ok
-	movb	$32, (%r9)
+	movb	$0, (%r9)
 	incq	%r9
 	incq	%rcx
 	jmp	.newline_loop
@@ -159,12 +163,52 @@ _start:
 	movq	(.nolines), %rsi
 	decq	%rsi
 	call	.Quick
+
+	#movq	$1, %rax
+	#movq	$1, %rdi
+	#movq	(.heapsc), %rsi
+	#movq	-20(%rbp), %rdx
+	#syscall
+
+.fill:
+	leaq	.spbuf(%rip), %r8
+	movq	(.heapsc), %r9
+	xorq	%rcx, %rcx
+	xorq	%r10, %r10
+.fill_loop:
+	cmpq	-20(%rbp), %rcx
+	je	.leave
+	cmpq	.spbufcap(%rip), %r10
+	je	.fill_full
+	movzbl	(%r9), %edi
+	cmpb	$0, %dil
+	je	.fill_resume
+	movb	%dil, (%r8)
+	incq	%r8
+	incq	%r10
+.fill_resume:
+	incq	%r9
+	incq	%rcx
+	jmp	.fill_loop
+.fill_full:
 	movq	$1, %rax
 	movq	$1, %rdi
-	movq	(.heapsc), %rsi
-	movq	-20(%rbp), %rdx
+	leaq	.spbuf(%rip), %rsi
+	movq	%r10, %rdx
 	syscall
+	leaq	.spbuf(%rip), %r8
+	xorq	%r10, %r10
+	jmp	.fill_resume
+
+
 .leave:
+	#movq	$1, %rax
+	#movq	$1, %rdi
+	#leaq	.spbuf(%rip), %rsi
+	#movq	%r10, %rdx
+	#syscall
+
+
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
