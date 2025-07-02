@@ -12,8 +12,6 @@
 	.badheap_msg: .string "sort-command: unable to allocate space\n"
 	.badheap_len: .quad 39
 
-	.spbufcap: .quad 1
-
 .section .data
 	# Number of lines the raw file has
 	.nolines: .quad 0
@@ -33,8 +31,6 @@
 	# drjfgh   .
 	# something.
 	.heapsc: .zero 8
-	# Ultimate buffer (non printiable characters are not included)
-	.spbuf: .zero 2048
 
 .section .text
 

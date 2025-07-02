@@ -191,8 +191,6 @@ _start:
 	incq	%r8
 	jmp	.loop_3
 
-
-
 .restore:
 	leaq	(.buffer), %r8
 	movq	.heapsc(%rip), %r9
@@ -213,18 +211,12 @@ _start:
 	incq	%r9
 	incq	%r11
 	jmp	.restore_loop
-
-
-
 .leave:
-
 	movq	$1, %rax
 	movq	$1, %rdi
 	leaq	(.buffer), %rsi
 	movq	%r10, %rdx
 	syscall
-
-
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
