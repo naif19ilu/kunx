@@ -3,6 +3,6 @@
     [x] makewords command
     [x] lowercase command
     [x] sort      command
-    [ ] unique    command
+    [x] unique    command
     [ ] mismatch  command
 

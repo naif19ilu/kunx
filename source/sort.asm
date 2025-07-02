@@ -1,4 +1,3 @@
-
 # kunx - Kernighan using unix
 # 1 Jul 2025
 # 'sort' command - sort lines by ascii order
@@ -142,7 +141,7 @@ _start:
 .newline_loop:
 	cmpq	%rcx, %r15
 	je	.newline_ok
-	movb	$0, (%r9)
+	movb	$32, (%r9)
 	incq	%r9
 	incq	%rcx
 	jmp	.newline_loop

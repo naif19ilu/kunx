@@ -196,14 +196,12 @@ _start:
 	movq	.heapsc(%rip), %rsi
 	movq	-20(%rbp), %rdx
 	syscall
-
 	UNMAP	.heapsc(%rip), -20(%rbp)
 	UNMAP	.buffer(%rip), -12(%rbp)
 	CLSFILE
 	movq	$60, %rax
 	movq	$0, %rdi
 	syscall
-
 .usage:
 	movq	$1, %rax
 	movq	$1, %rdi
