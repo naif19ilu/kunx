@@ -1,5 +1,5 @@
-objs = p.o makewords.o lowercase.o sort.o unique.o
-exec = p makewords lowercase sort unique
+objs = p.o makewords.o lowercase.o sort.o unique.o mismatch.o
+exec = p makewords lowercase sort unique mismatch
 
 all: $(exec)
 
@@ -22,6 +22,10 @@ sort: sort.asm
 unique: unique.asm
 	as	-o unique.o unique.asm
 	ld	-o unique unique.o
+
+mismatch: mismatch.asm
+	as	-o mismatch.o mismatch.asm
+	ld	-o mismatch mismatch.o
 
 clean:
 	rm	-rf $(objs) $(exec)

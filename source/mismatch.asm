@@ -10,7 +10,8 @@
 	.unable_len: .quad   43
 
 .section .bss
-        .buffer: .zero 8
+        .source: .zero 8
+	.dict: .zero 8
 
 .section .text
 
@@ -24,12 +25,35 @@ _start:
 	jne	.usage
 	popq	%rax
 	popq	%rdi
+	popq	%r15
 	pushq	%rbp
 	movq	%rsp, %rbp
-	subq	$12, %rsp
-	RDFILE	.buffer(%rip), -4(%rbp), -12(%rbp)
+	subq	$24, %rsp
+	RDFILE	.source(%rip), -4(%rbp), -12(%rbp)
+	movq	%r15, %rdi
+	RDFILE	.dict(%rip), -16(%rbp), -24(%rbp)
+	# r8: handles source
+	# r9: handles dictionary
+	movq	.source(%rip), %r8
+	movq	.dict(%rip), %r9
+.loop:
+	movzbl	(%r8), %edi
+	cmpb	$0, %dil
+	je	.leave
+
+	call	.FindFamily
+
+	movq	$1, %rax
+	movq	$1, %rdi
+	movq	%r9, %rsi
+	movq	$5, %rdx
+	syscall
+
+	#jmp	.loop
+
 .leave:
-	UNMAP	.buffer(%rip)
+	UNMAP	.source(%rip), -12(%rbp)
+	UNMAP	.dict(%rip), -24(%rbp)
 	CLSFILE
 	movq	$60, %rax
 	movq	$0, %rdi
@@ -52,3 +76,27 @@ _start:
 	movq	$60, %rax
 	movq	$1, %rdi
 	syscall
+
+.FindFamily:
+.ff_loop:
+	movzbl	(%r9), %esi
+	cmpb	$0, %sil
+	je	.ff_no_fam
+	cmpb	%sil, %dil
+	jne	.ff_skip_word
+	movq	$0, %rax
+	ret
+.ff_skip_word:	
+	movzbl	(%r9), %esi
+	cmpb	$10, %sil
+	je	.ff_skiped
+	incq	%r9
+	jmp	.ff_skip_word
+.ff_skiped:
+	incq	%r9
+	jmp	.ff_loop
+.ff_no_fam:
+	movq	$-1, %rax
+	ret
+
+
