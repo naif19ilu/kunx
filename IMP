@@ -1,0 +1,29 @@
+
+    p command:
+        this is basically reading a file and printing its contents
+
+    makewords command: 
+        once the file has been read the program is going to use a
+        second buffer where only [azAZ09] characters are going to
+        be stored, anything else is taken as a separator bwtween
+        words
+    
+    lowercase command:
+        once the file has been read, the program will look for characters
+        between [AZ], once it founds them will turn them into lower by
+        subtracting 32 to the byte, all other bytes and transformed ones
+        are stored into a second buffer
+    
+    sort command:
+        Ok, this command actually does something different, the first thing
+        to do is getting all words within a fixed array in width, what i mean
+        is this: When you read a file your buffer will look like:
+
+        hi\n                hi   \n
+        como\n              como \n
+        estas\n             estas\n
+        ~~~~~~~ this        `~~~~~~~~~ but we want this
+
+        Once we have the second version in a separated buffer we apply Quick
+        sort (The comparation funcion is via ascii value); whenever we have
+        to do a swap byte by byte without any additional variable i love asm
