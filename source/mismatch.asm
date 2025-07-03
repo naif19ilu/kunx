@@ -6,6 +6,12 @@
 	.filesrc: .zero 8
 	.dictsrc: .zero 8
 
+	# This is map table to access in a quick way
+	# the families, for example if we need familia
+	# 'a' we access this map at position 0, if we
+	# need familia 'z' then use 25
+	.abcmap: .zero 26 * 8
+
 .section .rodata
 	.usage_msg: .string "mismatch-command: mismatch <file> <dict>\n"
 	.usage_len: .quad   41
@@ -41,7 +47,8 @@ _start:
 	# -32: number of lines in 'file'
 	# -40: number of lines visited in 'file'
 	# -48: current word's length
-	subq	$48, %rsp
+	# -56: current word
+	subq	$56, %rsp
 	RDFILE	.filesrc(%rip), -4(%rbp), -12(%rbp)
 	movq	%r15, %rdi
 	RDFILE	.dictsrc(%rip), -16(%rbp), -24(%rbp)
@@ -53,6 +60,7 @@ _start:
 	# Setting up buffers
 	movq	.filesrc(%rip), %rax
 	movq	%rax, (.fileoff)
+	call	.FindFamilas
 .loop:
 	movq	-40(%rbp), %rax
 	cmpq	-32(%rbp), %rax
@@ -62,6 +70,8 @@ _start:
 	leaq	.fileoff(%rip), %rsi
 	call	.GetWord
 	movq	%rcx, -48(%rbp)
+	movq	%rax, -56(%rbp)
+
 
 	incq	-40(%rbp)
 	jmp	.loop
@@ -134,5 +144,57 @@ _start:
 .gw_return:
 	incq	(%rsi)
 	movq	-8(%rbp), %rax
+	leave
+	ret
+
+# args: None
+# rets: None
+.FindFamilas:
+	pushq	%rbp
+	movq	%rsp, %rbp
+	# -8 : dict's number lines
+	# -16: current number line
+	# -24: current family
+	# -32: dict's offset
+	subq	$32, %rsp
+	movq	(.dictsrc), %rdi
+	call	.NLines
+	movq	%rax, -8(%rbp)
+	movq	$0, -16(%rbp)
+	movq	$96, -24(%rbp)
+	movq	(.dictsrc), %rax
+	movq	%rax, -32(%rbp)
+.ff_loop:
+	movq	-16(%rbp), %rax
+	cmpq	-8(%rbp), %rax
+	je	.ff_return
+	movq	-32(%rbp), %rdi
+	leaq	-32(%rbp), %rsi
+	call	.GetWord
+	movzbl	(%rax), %edi
+	cmpq	-24(%rbp), %rdi
+	je	.ff_resume
+
+	movq	%rdi, -24(%rbp)
+	subq	$'a', %rdi
+	leaq	.abcmap(%rip), %rbx
+	movq	%rax, (%rbx, %rdi, 8)
+
+.ff_resume:
+	incq	-16(%rbp)
+	jmp	.ff_loop
+.ff_return:
+
+	movq	$25, %rbx
+	leaq	.abcmap(%rip), %rax
+	movq	(%rax, %rbx, 8), %rsi
+
+	movq	$1, %rax
+	movq	$1, %rdi
+	movq	$3, %rdx
+	syscall
+
+
+
 	leave
 	ret
