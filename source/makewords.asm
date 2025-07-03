@@ -51,7 +51,13 @@ _start:
 	incq	%r10
 	jmp	.resume
 .wordend:
+	movq	%r9, %r15
+	decq	%r15
+	movzbl	(%r15), %edi
+	cmpb	$10, %dil
+	je	.wordend_ok
 	movb	$'\n', (%r9)
+.wordend_ok:
 	incq	%r9
 	incq	%r10
 	jmp	.resume
