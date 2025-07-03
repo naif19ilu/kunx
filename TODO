@@ -4,5 +4,5 @@
     [x] lowercase command
     [x] sort      command
     [x] unique    command
-    [ ] mismatch  command
+    [x] mismatch  command
 

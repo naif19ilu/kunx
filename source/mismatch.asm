@@ -24,6 +24,8 @@
 	.fileoff: .quad 0
 	.dictoff: .quad 0
 
+	.faminfo: .quad 0
+
 .section .text
 
 .macro GETFAM no, put_at, famsz
@@ -63,7 +65,8 @@ _start:
 	# -48: current word's length
 	# -56: current word
 	# -64: current family size
-	subq	$64, %rsp
+	# -72: counter for -64
+	subq	$72, %rsp
 	RDFILE	.filesrc(%rip), -4(%rbp), -12(%rbp)
 	movq	%r15, %rdi
 	RDFILE	.dictsrc(%rip), -16(%rbp), -24(%rbp)
@@ -89,19 +92,30 @@ _start:
 	# Gets word's family
 	movzbl	(%rax), %edi
 	subl	$'a', %edi
-
-	GETFAM	$25, (.dictoff), -64(%rbp)
-
-	movq	(.dictoff), %rsi
-	movq	$3, %rdx
+	GETFAM	%rdi, (.faminfo), -64(%rbp)
+	movq	$0, -72(%rbp)
+.check:
+	movq	-72(%rbp), %rax
+	cmpq	-64(%rbp), %rax
+	je	.not_found
+	movq	.faminfo(%rip), %rdi
+	leaq	.faminfo(%rip), %rsi
+	call	.GetWord
+	movq	%rax, %rsi
+	movq	-56(%rbp), %rdi
+	call	.CmpStr
+	cmpq	$1, %rax
+	je	.resume_main
+	incq	-72(%rbp)
+	jmp	.check
+.not_found:
 	movq	$1, %rax
 	movq	$1, %rdi
+	movq	-56(%rbp), %rsi
+	movq	-48(%rbp), %rdx
+	incq	%rdx
 	syscall
-
-	movq	-64(%rbp), %rdi
-	movq	$60, %rax
-	syscall
-
+.resume_main:
 	incq	-40(%rbp)
 	jmp	.loop
 .leave:
@@ -234,5 +248,32 @@ _start:
 	movq	-48(%rbp), %r15
 	movq	-40(%rbp), %r14
 	movq	%r14, 8(%r15)
+	leave
+	ret
+
+# args:
+# rdi : main word
+# rsi : compare against
+.CmpStr:
+	pushq	%rbp
+	movq	%rsp, %rbp
+.cs_loop:
+	movzbl	(%rdi), %r8d
+	movzbl	(%rsi), %r9d
+	cmpb	%r8b, %r9b
+	jne	.cs_no
+	cmpb	$10, %r8b
+	je	.cs_si
+	cmpb	$0, %r8b
+	je	.cs_si
+	incq	%rdi
+	incq	%rsi
+	jmp	.cs_loop
+.cs_si:
+	movq	$1, %rax
+	jmp	.cs_return
+.cs_no:
+	movq	$0, %rax
+.cs_return:
 	leave
 	ret
