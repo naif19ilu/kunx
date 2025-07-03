@@ -55,7 +55,7 @@ _start:
 	decq	%r15
 	movzbl	(%r15), %edi
 	cmpb	$10, %dil
-	je	.wordend_ok
+	je	.resume
 	movb	$'\n', (%r9)
 .wordend_ok:
 	incq	%r9
