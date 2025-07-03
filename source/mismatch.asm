@@ -90,7 +90,7 @@ _start:
 	movzbl	(%rax), %edi
 	subl	$'a', %edi
 
-	GETFAM	$3, (.dictoff), -64(%rbp)
+	GETFAM	$25, (.dictoff), -64(%rbp)
 
 	movq	(.dictoff), %rsi
 	movq	$3, %rdx
@@ -186,7 +186,8 @@ _start:
 	# -24: current family
 	# -32: dict's offset
 	# -40: family size
-	subq	$40, %rsp
+	# -48: previous element in abcmap
+	subq	$48, %rsp
 	movq	(.dictsrc), %rdi
 	call	.NLines
 	movq	%rax, -8(%rbp)
@@ -206,23 +207,32 @@ _start:
 	movq	%rax, %r15					# beginning of new word
 	cmpq	-24(%rbp), %rdi
 	je	.ff_resume
+	incq	-40(%rbp)					# count this word as well
 	movq	%rdi, -24(%rbp)
 	subq	$'a', %rdi
-
 	movq	%rdi, %rax
 	movq	$16, %rbx
 	mulq	%rbx
 	movq	%rax, %rbx
 	leaq	.abcmap(%rip), %rax
 	addq	%rbx, %rax
-
 	movq	%r15, (%rax)
-
+	cmpq	$0, -48(%rbp)
+	je	.ff_setnewfam
+	movq	-48(%rbp), %r15
+	movq	-40(%rbp), %r14
+	movq	%r14, 8(%r15)
+.ff_setnewfam:
+	movq	%rax, -48(%rbp)
 	movq	$-1, -40(%rbp)
 .ff_resume:
 	incq	-40(%rbp)
 	incq	-16(%rbp)
 	jmp	.ff_loop
 .ff_return:
+	incq	-40(%rbp)					# count this word as well
+	movq	-48(%rbp), %r15
+	movq	-40(%rbp), %r14
+	movq	%r14, 8(%r15)
 	leave
 	ret
